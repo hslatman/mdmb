@@ -14,5 +14,3 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	go.step.sm/crypto v0.30.0
 )
-
-replace github.com/jessepeterson/cfgprofiles => ./../cfgprofiles // TODO: remove the replace
