@@ -24,12 +24,13 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/jessepeterson/cfgprofiles"
-	"github.com/jessepeterson/mdmb/internal/attest"
 	"github.com/mholt/acmez"
 	"github.com/mholt/acmez/acme"
 	"github.com/smallstep/certinfo"
 	"go.step.sm/crypto/pemutil"
 	"go.step.sm/crypto/x509util"
+
+	"github.com/jessepeterson/mdmb/internal/attest"
 )
 
 func keyFromACMECertificateProfilePayload(plc *cfgprofiles.ACMECertificatePayload, rand io.Reader) (crypto.Signer, error) {
@@ -106,8 +107,8 @@ func newACMECertificateRequest(ctx context.Context, device *Device, pl *cfgprofi
 		return nil, nil, fmt.Errorf("failed creating key for ACMECertificate payload: %w", err)
 	}
 
-	attestationCA, ok := attest.FromContext(ctx)
-	if !ok {
+	attestationCA := device.attestationCA
+	if attestationCA == nil {
 		return nil, nil, errors.New("ACMECertificate payload processing requires a (fake) Attestation CA to be configured")
 	}
 
@@ -267,10 +268,10 @@ func createACMECSR(device *Device, pl *cfgprofiles.ACMECertificatePayload, key c
 			}
 			uris = append(uris, u)
 		}
-		for _, pn := range san.NTPrincipals {
+		if san.NTPrincipal != "" {
 			otherSANs = append(otherSANs, x509util.SubjectAlternativeName{
-				Type:  "1.3.6.1.4.1.311.20.2.3",   // User Principal Name / NTPrincipalName
-				Value: fmt.Sprintf("utf8:%s", pn), // e.g. utf8:test@example.com
+				Type:  "1.3.6.1.4.1.311.20.2.3",                // User Principal Name / NTPrincipalName
+				Value: fmt.Sprintf("utf8:%s", san.NTPrincipal), // e.g. utf8:test@example.com
 			})
 		}
 	}

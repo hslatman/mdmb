@@ -14,9 +14,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	bolt "go.etcd.io/bbolt"
+
 	"github.com/jessepeterson/mdmb/internal/attest"
 	"github.com/jessepeterson/mdmb/internal/device"
-	bolt "go.etcd.io/bbolt"
 )
 
 var version = "unknown"
@@ -40,8 +41,10 @@ type DeviceBag interface {
 
 // RunContext contains "global" runtime environment settings
 type RunContext struct {
-	Context context.Context
-	DB      *bolt.DB
+	Context       context.Context
+	DB            *bolt.DB
+	AttestationCA *attest.CA
+
 	// device UUIDs (UDIDs)
 	UUIDs []string
 	Bag   DeviceBag
@@ -172,13 +175,12 @@ func devicesProfilesInstall(name string, args []string, rctx RunContext, usage f
 		os.Exit(2)
 	}
 
-	aca, err := attest.New(*attestationCACertFile, *attestationCAKeyFile, *attestationCAKeyPassword)
+	attestationCA, err := attest.New(*attestationCACertFile, *attestationCAKeyFile, *attestationCAKeyPassword)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctx := context.Background()
-	ctx = attest.Context(ctx, aca)
+	rctx.AttestationCA = attestationCA
 
 	ep, err := ioutil.ReadFile(*file)
 	if err != nil {
@@ -192,7 +194,7 @@ func devicesProfilesInstall(name string, args []string, rctx RunContext, usage f
 
 	for _, u := range rctx.UUIDs {
 		fmt.Println(u)
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, rctx.AttestationCA)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -265,7 +267,7 @@ func devicesTokenUpdate(name string, args []string, rctx RunContext, usage func(
 	for _, u := range rctx.UUIDs {
 		fmt.Println(u)
 
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, nil)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -301,7 +303,7 @@ func devicesConnect(name string, args []string, rctx RunContext, usage func()) {
 	workerData := []*ConnectWorkerData{}
 
 	for _, u := range rctx.UUIDs {
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, nil)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -330,7 +332,7 @@ func devicesProfilesList(name string, args []string, rctx RunContext, usage func
 
 	for _, u := range rctx.UUIDs {
 		fmt.Printf("profiles for UUID: %s\n", u)
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, nil)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -372,7 +374,7 @@ func devicesMdmSignature(name string, args []string, rctx RunContext, usage func
 	}
 
 	for _, u := range rctx.UUIDs {
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, nil)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -419,7 +421,7 @@ func devicesProfilesRemove(name string, args []string, rctx RunContext, usage fu
 
 	for _, u := range rctx.UUIDs {
 		fmt.Println(u)
-		dev, err := device.Load(u, rctx.DB)
+		dev, err := device.Load(u, rctx.DB, nil)
 		if err != nil {
 			log.Println(err)
 			continue

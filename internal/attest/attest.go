@@ -50,5 +50,6 @@ func (ca *CA) Sign(template *x509.Certificate) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign certificate: %w", err)
 	}
+
 	return []*x509.Certificate{cert, ca.m.Intermediate}, nil
 }
